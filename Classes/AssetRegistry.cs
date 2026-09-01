@@ -49,6 +49,12 @@ namespace AssetRegistryModMigrator.Classes
         public IReadOnlyList<int?> ChunkIds { get; }
         public object OldObjectPath { get; }
         public object OptionalOuterPath { get; }
+
+        public int HashCode {  get=>GetHashCode(); }
+        public override int GetHashCode()
+        {
+            return (PackageName+AssetClass).GetHashCode();
+        }
     }
 
     public class Header
@@ -97,6 +103,8 @@ namespace AssetRegistryModMigrator.Classes
 
         public Header Header { get; }
         public State State { get; }
+
+        public Asset? FindAsset(int HashCode) => State.Assets[State.HashIndex[HashCode]];
     }
 
     public class State
@@ -113,12 +121,16 @@ namespace AssetRegistryModMigrator.Classes
             this.Dependencies = Dependencies;
             this.Packages = Packages;
             this.Options = Options;
+
+            HashIndex = Assets.ToDictionary(x => x.GetHashCode(), x => Assets.IndexOf(x));
         }
 
-        public IReadOnlyList<Asset> Assets { get; }
+        public List<Asset> Assets { get; }
         public IReadOnlyList<object> Dependencies { get; }
         public IReadOnlyList<object> Packages { get; }
         public Options Options { get; }
+
+        internal readonly IReadOnlyDictionary<int, int> HashIndex;
     }
 
 }

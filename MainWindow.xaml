@@ -6,11 +6,11 @@
         xmlns:local="clr-namespace:AssetRegistryModMigrator"
         xmlns:Model="clr-namespace:AssetRegistryModMigrator.Model" 
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        Title="ARMM" Height="450" Width="800" Loaded="Window_Loaded">
     <Window.Resources>
-        <HierarchicalDataTemplate DataType="{x:Type Model:DirectoryItem}" ItemsSource="{Binding Children}">
+        <HierarchicalDataTemplate DataType="{x:Type Model:DirectoryItem}" ItemsSource="{Binding Children}" >
             <StackPanel Orientation="Horizontal">
-                <CheckBox Click="CheckBox_Click" Checked="CheckBox_Checked" Unchecked="CheckBox_Checked" IsThreeState="True"/>
+                <CheckBox x:Name="DirectoryCheckmark" Click="CheckBox_Click"  Checked="CheckBox_Checked" Unchecked="CheckBox_Checked" IsThreeState="True"/>
                 <TextBlock Text="{Binding Path=Name}"/>
 
             </StackPanel>
@@ -18,7 +18,7 @@
 
         <DataTemplate DataType="{x:Type Model:FileItem}">
             <StackPanel Orientation="Horizontal">
-                <CheckBox Click="CheckBox_Click" IsChecked="{Binding Path=Checked,Mode=TwoWay}" Checked="CheckBox_Checked" Unchecked="CheckBox_Checked"/>
+                <CheckBox x:Name="FileCheckmark" Click="CheckBox_Click" Checked="CheckBox_Checked" Unchecked="CheckBox_Checked"/>
                 <TextBlock Text="{Binding Path=Name}" />
             </StackPanel>
         </DataTemplate>

@@ -10,21 +10,9 @@ namespace AssetRegistryModMigrator.Model
             Parent = parent;
         }
 
-        public List<Asset> Assets { get; set; }
-        public bool Checked { get; set; }
-        public void AddAsset(Asset asset)
-        {
-            Assets.Add(asset);
-        }
+        private List<Asset> Assets { get; set; }
+        public void AddAsset(Asset asset) => Assets.Add(asset);
 
-        public override List<Asset> GetAllAssets()
-        {
-            return Assets;
-        }
-
-        public override void PropagateChecks(bool check)
-        {
-            Checked = check;
-        }
+        public override List<Asset> GetAllAssets() => Assets;
     }
 }

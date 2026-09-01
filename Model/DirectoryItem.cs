@@ -1,7 +1,4 @@
 ﻿using AssetRegistryModMigrator.Classes;
-using System.ComponentModel;
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
 
 namespace AssetRegistryModMigrator.Model
 {
@@ -47,11 +44,11 @@ namespace AssetRegistryModMigrator.Model
             return Children.SelectMany(x => x.GetAllAssets()).ToList();
         }
 
-        public override void PropagateChecks(bool check)
+        /*public override void PropagateChecks(bool? check)
         {
             foreach (var path in Children)
                 path.PropagateChecks(check);
 
-        }
+        }*/
     }
 }
