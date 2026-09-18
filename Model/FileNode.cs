@@ -1,18 +1,23 @@
 ﻿using AssetRegistryModMigrator.Classes;
+using System.Runtime.CompilerServices;
 
 namespace AssetRegistryModMigrator.Model
 {
-    public class FileItem : Item
+    public class FileNode : TreeNode
     {
-        public FileItem(Asset asset, Item parent) : base(asset)
+        public FileNode(Asset asset, TreeNode parent) : base(asset)
         {
             Assets = [asset];
-            Parent = parent;
+            ParentNode = parent;
         }
-
         private List<Asset> Assets { get; set; }
         public void AddAsset(Asset asset) => Assets.Add(asset);
 
         public override List<Asset> GetAllAssets() => Assets;
+
+        public override int GetHashCode()
+        {
+            return Assets.GetHashCode();
+        }
     }
 }

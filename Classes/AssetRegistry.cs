@@ -1,8 +1,10 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
-using System.Text.Json.Serialization;
+//using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace AssetRegistryModMigrator.Classes
@@ -105,6 +107,14 @@ namespace AssetRegistryModMigrator.Classes
         public State State { get; }
 
         public Asset? FindAsset(int HashCode) => State.Assets[State.HashIndex[HashCode]];
+        public static AssetRegistry? GenerateRegistry(string path)
+        {
+            if (!File.Exists(path))
+                return null;
+            // Open document
+            string? json = File.ReadAllText(path);
+            return JsonConvert.DeserializeObject<AssetRegistry>(json);
+        }
     }
 
     public class State
