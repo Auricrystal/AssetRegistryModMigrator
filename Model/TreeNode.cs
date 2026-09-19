@@ -13,20 +13,21 @@ namespace AssetRegistryModMigrator.Model
     {
         public TreeNode(string name)
         {
-            Name = name;
+            _name = name;
         }
         public TreeNode(string name, TreeNode parent) : this(name)
         {
-            Name = name;
+            _name = name;
             ParentNode = parent;
         }
         protected TreeNode(Asset asset)
         {
-            Name = asset.PackageName.Split("/", StringSplitOptions.RemoveEmptyEntries).Last();
+            _name = asset.PackageName.Split("/", StringSplitOptions.RemoveEmptyEntries).Last();
         }
         public int Depth { get => (IsRoot ? 1 : ParentNode.Depth + 1); }
         public int HashCode { get => GetHashCode(); }
-        public string Name { get; set; }
+        private string _name = "";
+        public string Name { get { return _name; } set { _name = value; OnPropertyChanged("Name"); } }
         public string Path { get { return (ParentNode is not null) ? ParentNode?.ToString() + "/" + Name : "/" + Name; } }
         public string FullPath { get => Path + "/" + Name; }
         public TreeNode? ParentNode { get; set; }
@@ -83,7 +84,7 @@ namespace AssetRegistryModMigrator.Model
                 var temp = this;
                 bool found = FullPath.Contains(search, StringComparison.OrdinalIgnoreCase);
                 //if (found)
-                    //Debug.WriteLine($"Match Found:{FullPath} Contains:{search} {FullPath.Contains(search, StringComparison.OrdinalIgnoreCase)} at Depth:{Depth}".Replace(search, $"<Bold>{search}</Bold>"));
+                //Debug.WriteLine($"Match Found:{FullPath} Contains:{search} {FullPath.Contains(search, StringComparison.OrdinalIgnoreCase)} at Depth:{Depth}".Replace(search, $"<Bold>{search}</Bold>"));
                 return found;
             }
 

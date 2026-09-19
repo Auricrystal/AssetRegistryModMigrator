@@ -5,5 +5,8 @@
     <Setting Name="DonorAssetRegistry" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
     </Setting>
+    <Setting Name="ReceiverAssetRegistry" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
   </Settings>
 </SettingsFile>

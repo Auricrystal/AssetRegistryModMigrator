@@ -34,5 +34,17 @@ namespace AssetRegistryModMigrator.Properties {
                 this["DonorAssetRegistry"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string ReceiverAssetRegistry {
+            get {
+                return ((string)(this["ReceiverAssetRegistry"]));
+            }
+            set {
+                this["ReceiverAssetRegistry"] = value;
+            }
+        }
     }
 }

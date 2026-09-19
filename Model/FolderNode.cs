@@ -20,7 +20,6 @@ namespace AssetRegistryModMigrator.Model
 
         public FolderNode Chain(string folder)
         {
-            //Debug.WriteLine(string.Format("Adding Subfolder {1}/{0}",folder,this.Name));
             var node = new FolderNode(folder, this);
             Children.Add(node);
             return node;
@@ -31,7 +30,6 @@ namespace AssetRegistryModMigrator.Model
             if (Children.ToList().Exists(x => x.Name == asset.PackageName.Split("/", StringSplitOptions.RemoveEmptyEntries).Last()))
             {
                 FileNode? file = ((FileNode?)Children.ToList().Find(x => x.Name == asset.PackageName.Split("/", StringSplitOptions.RemoveEmptyEntries).Last()));
-                //Debug.WriteLine(string.Format("Combining {0} into {1}",asset.AssetName,file?.ToString()));
 
                 file?.AddAsset(asset);
                 return file;
@@ -39,19 +37,16 @@ namespace AssetRegistryModMigrator.Model
 
             var node = new FileNode(asset, this);
             Children.Add(node);
-            //Debug.WriteLine("New Asset!.. " + asset.AssetName);
 
             return node;
         }
         public List<FileNode> GetAllFiles()
         {
             var files = new List<FileNode>();
-            //var test = Children.Where(x => x is FolderNode).SelectMany(x => (x as FolderNode).GetAllFiles());
             foreach (var child in Children)
             {
                 if (child is FileNode)
                 {
-                    //Debug.WriteLine(child.Name);
                     files.Add((FileNode)child);
                     continue;
                 }
@@ -59,12 +54,6 @@ namespace AssetRegistryModMigrator.Model
             }
 
             return files;
-
-            return Children
-                .Where(x=>x is FolderNode)
-                .SelectMany(x => (x as FolderNode)
-                .GetAllFiles())
-                .ToList();
         }
 
         public override List<Asset> GetAllAssets()

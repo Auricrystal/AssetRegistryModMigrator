@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using Microsoft.Win32;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -45,17 +46,17 @@ namespace AssetRegistryModMigrator.Classes
         public string AssetName { get; }
         public string AssetClass { get; }
         public bool? HasNumberlessTags { get; }
-        public Dictionary<string,string> TagsAndValues { get; }
+        public Dictionary<string, string> TagsAndValues { get; }
         public IReadOnlyList<object> Bundles { get; }
         public object PackageFlags { get; }
         public IReadOnlyList<int?> ChunkIds { get; }
         public object OldObjectPath { get; }
         public object OptionalOuterPath { get; }
 
-        public int HashCode {  get=>GetHashCode(); }
+        public int HashCode { get => GetHashCode(); }
         public override int GetHashCode()
         {
-            return (PackageName+AssetClass).GetHashCode();
+            return (PackageName + AssetClass).GetHashCode();
         }
     }
 
@@ -107,13 +108,29 @@ namespace AssetRegistryModMigrator.Classes
         public State State { get; }
 
         public Asset? FindAsset(int HashCode) => State.Assets[State.HashIndex[HashCode]];
-        public static AssetRegistry? GenerateRegistry(string path)
+        public static AssetRegistry? CreateRegistry(string path)
         {
             if (!File.Exists(path))
                 return null;
             // Open document
             string? json = File.ReadAllText(path);
             return JsonConvert.DeserializeObject<AssetRegistry>(json);
+        }
+        public static AssetRegistry? PickRegistryDialog(out string filename)
+        {
+            filename = "";
+            //if (registry == null) return;
+            FileDialog dialog = new OpenFileDialog() { DefaultExt = ".json", FileName = "AssetRegistry", Filter = "Json Files (.json)|*.json" };
+            Nullable<bool> result = dialog.ShowDialog();
+            if (!result.Value) return null;
+
+            filename = dialog.FileName;
+            return CreateRegistry(dialog.FileName);
+
+
+            //SaveData.DonorAssetRegistry = dialog.FileName;
+            //SaveData.Save();
+
         }
     }
 

@@ -9,36 +9,22 @@ namespace AssetRegistryModMigrator.Classes
 {
     public static class ItemProvider
     {
-        public static IEnumerable<TreeNode> GetItems(string path, out List<FileNode>? leaves) => AssetRegistry.GenerateRegistry(path).GetItems(out leaves);
-        public static IEnumerable<TreeNode> GetItems(string path)
-        {
-            List<FileNode>? unused;
-            return GetItems(path, out unused);
-        }
-
-        public static IEnumerable<TreeNode> GetItems(this AssetRegistry registry, out List<FileNode>? leaves) => GetItems(registry.State.Assets, out leaves);
-        public static IEnumerable<TreeNode> GetItems(this AssetRegistry registry)
-        {
-            List<FileNode>? unused;
-            return registry.GetItems(out unused);
-        }
-        public static IEnumerable<TreeNode> GetItems(IReadOnlyList<Asset> Assets)
-        {
-            List<FileNode>? unused;
-            return GetItems(Assets, out unused);
-        }
-        public static IEnumerable<TreeNode> GetItems(IReadOnlyList<Asset> Assets, out List<FileNode>? leaves)
+        //public static IEnumerable<TreeNode> BuildTree(string path) => BuildTree(path, out _);
+       // public static IEnumerable<TreeNode> BuildTree(string path, out List<FileNode>? leaves) => AssetRegistry.CreateRegistry(path).BuildTree(out leaves);
+        public static IEnumerable<TreeNode> BuildTree(this AssetRegistry registry) => registry.BuildTree(out _);
+        public static IEnumerable<TreeNode> BuildTree(this AssetRegistry registry, out List<FileNode>? leaves) => BuildTree(registry.State.Assets, out leaves);
+        //public static IEnumerable<TreeNode> BuildTree(IReadOnlyList<Asset> Assets) => BuildTree(Assets, out _);
+        public static IEnumerable<TreeNode> BuildTree(IReadOnlyList<Asset> Assets, out List<FileNode>? leaves)
         {
             var items = new List<TreeNode>();
             var files = new List<FileNode>();
             FolderNode? CrawlNode = null;
-            FileNode? temp=null;
+            FileNode? temp = null;
             foreach (Asset asset in Assets)
             {
-                //Debug.WriteLine(string.Format("Compare {0} to {1}",CrawlNode?.Path+"/ F:("+CrawlNode?.Name+")",asset.PackagePath+"/ F:("+asset.AssetName+")"));
-                if (CrawlNode?.Path==asset.PackagePath)
+                if (CrawlNode?.Path == asset.PackagePath)
                 {
-                    temp= CrawlNode?.EndChain(asset);
+                    temp = CrawlNode?.EndChain(asset);
                     files.Add(temp);
                     continue;
                 }
@@ -74,26 +60,23 @@ namespace AssetRegistryModMigrator.Classes
                 temp = CrawlNode?.EndChain(asset);
 
                 files.Add(temp);
-
-                //Debug.WriteLine("DepthEnd:" + temp.Depth);
-                //Debug.Write(asset.AssetName);
             }
             leaves = files;
             return items;
         }
-        
-        public static FrameworkElement? FindParentByClass(this FrameworkElement control, Type Class)
-        {
 
-            if (control.TemplatedParent is null)
-                return null;
+        //public static FrameworkElement? FindParentByClass(this FrameworkElement control, Type Class)
+        //{
 
-            //Debug.WriteLine("Type: " + (control.TemplatedParent.GetType() == Class) + "\n" + control.TemplatedParent.GetType().ToString());
-            if (control.TemplatedParent.GetType() == Class)
-                return (FrameworkElement?)control.TemplatedParent;
+        //    if (control.TemplatedParent is null)
+        //        return null;
 
-            return ((FrameworkElement?)control.TemplatedParent).FindParentByClass(Class);
-        }
+        //    //Debug.WriteLine("Type: " + (control.TemplatedParent.GetType() == Class) + "\n" + control.TemplatedParent.GetType().ToString());
+        //    if (control.TemplatedParent.GetType() == Class)
+        //        return (FrameworkElement?)control.TemplatedParent;
+
+        //    return ((FrameworkElement?)control.TemplatedParent).FindParentByClass(Class);
+        //}
 
         /// <summary>
         /// Applies a search filter to all items of a TreeView recursively

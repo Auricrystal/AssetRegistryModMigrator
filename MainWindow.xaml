@@ -6,16 +6,12 @@
         xmlns:local="clr-namespace:AssetRegistryModMigrator"
         xmlns:Model="clr-namespace:AssetRegistryModMigrator.Model" 
         mc:Ignorable="d"
-        Title="ARMM" Height="450" Width="800" Loaded="Window_Loaded">
+        Title="ARMM" Height="450" Width="900" MinWidth="900" Loaded="Window_Loaded">
     <Window.Resources>
-       
-           
-                <Style TargetType="TreeViewItem">
-                    <Setter Property="HorizontalContentAlignment" Value="Left"/>
-                    <Setter Property="VerticalContentAlignment" Value="Center"/>
-                </Style>
-            
-
+        <Style TargetType="TreeViewItem">
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
         <HierarchicalDataTemplate DataType="{x:Type Model:FolderNode}" ItemsSource="{Binding Children}" >
             <StackPanel Orientation="Horizontal">
                 <!--<CheckBox x:Name="DirectoryCheckmark" Click="CheckBox_Click" IsChecked="{Binding Selected,UpdateSourceTrigger=PropertyChanged}"  IsThreeState="True"/>-->
@@ -24,7 +20,9 @@
         </HierarchicalDataTemplate>
 
         <DataTemplate DataType="{x:Type Model:FileNode}">
+            
             <StackPanel Orientation="Horizontal">
+                
                 <StackPanel.ContextMenu>
                     <ContextMenu>
                         <MenuItem Header="View" Click="View_OnClick"/>
@@ -32,45 +30,66 @@
                         <MenuItem Header="Delete" Click="Delete_OnClick"/>
                     </ContextMenu>
                 </StackPanel.ContextMenu>
-                <CheckBox x:Name="FileCheckmark" Click="CheckBox_Click" IsChecked="{Binding Selected,UpdateSourceTrigger=PropertyChanged}" />
-                <TextBlock Text="{Binding Path=Name}"/>
+                <CheckBox Click="CheckBox_Click" IsChecked="{Binding Selected,UpdateSourceTrigger=PropertyChanged}" DataContext="{Binding }" />
+                <TextBlock Text="{Binding Path=Name}" ToolTip="{Binding Path=FullPath}"/>
             </StackPanel>
         </DataTemplate>
     </Window.Resources>
     <DockPanel>
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="_File">
-                <MenuItem Header="_Open" Click="FileOpen_Click"/>
+                <MenuItem Header="_Open" Click="DonorRegistryDialog_Click"/>
                 <MenuItem Header="_Save" Click="SaveList_Click"/>
             </MenuItem>
             <TextBlock Text="Hello" HorizontalAlignment="Right" Margin="0,0,0,0"/>
         </Menu>
         <Grid Background="LightGray">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="35*"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="65*"/>
+                <ColumnDefinition Width="200*" MaxWidth="300" MinWidth="200"/>
+                <ColumnDefinition Width="2"/>
+                <ColumnDefinition Width="500*" MinWidth="300"/>
+                <ColumnDefinition Width="2"/>
+                <ColumnDefinition Width="200*" MaxWidth="300" MinWidth="200"/>
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
                 <RowDefinition Height="90*"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <TreeView Grid.Column="0" MinWidth="200" x:Name="AssetList" Grid.Row="0" SelectedItemChanged="AssetList_SelectionChanged" TreeViewItem.Selected="TreeViewItem_Selected" TreeViewItem.Expanded="AssetList_Expanded" DataContextChanged="AssetList_DataContextChanged">
+            <TreeView Grid.Column="0" x:Name="AssetList" Grid.Row="0" HorizontalAlignment="Stretch" SelectedItemChanged="AssetList_SelectionChanged" TreeViewItem.Selected="TreeViewItem_Selected" TreeViewItem.Expanded="AssetList_Expanded" DataContextChanged="AssetList_DataContextChanged">
                 <TreeView.ItemContainerStyle>
                     <!-- This style hooks up the UI state to your data model state -->
                     <Style x:Name="TreeNodeRegistry" TargetType="{x:Type TreeViewItem}">
                         <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
                         <Setter Property="HorizontalContentAlignment" Value="Left"/>
                         <Setter Property="VerticalContentAlignment" Value="Top"/>
+                        <!--<Setter Property="Margin" Value="-10,3,0,0" />-->
                         <!-- <Setter Property="VirtualizingStackPanel.IsVirtualizing" Value="false"/>-->
 
                     </Style>
                 </TreeView.ItemContainerStyle>
+           
             </TreeView>
-            <TextBox x:Name="SearchBar" MinWidth="200"  Grid.Row="1" Grid.ColumnSpan="2" TextChanged="SearchBar_TextChanged"/>
-            <GridSplitter Grid.Column="1" Width="2" Background="Red" ResizeBehavior="PreviousAndNext"/>
-            <TextBox FontSize="10" Grid.Column="2" DockPanel.Dock="Right" x:Name="JsonBox" Background="LightGray" IsReadOnly="True"/>
+            <!--<TextBox x:Name="SearchBar" MinWidth="200"  Grid.Row="1" Grid.ColumnSpan="2" TextChanged="SearchBar_TextChanged"/>-->
+            <GridSplitter Grid.Column="1" Width="2" Background="Red" Panel.ZIndex="2" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" HorizontalAlignment="Center"/>
+            <TextBox FontSize="10" Grid.Column="2" DockPanel.Dock="Right" x:Name="JsonBox" Background="LightGray" IsReadOnly="True" Panel.ZIndex="-1" HorizontalAlignment="Stretch"/>
+            <GridSplitter Grid.Column="3" Width="2" Background="Red" Panel.ZIndex="2" ResizeDirection="Columns"  HorizontalAlignment="Center" ResizeBehavior="PreviousAndNext"/>
+            <TreeView x:Name="ReceiverAssetList" Grid.Row="0" Grid.Column="4" Panel.ZIndex="1" HorizontalAlignment="Stretch">
+                <!--<TreeView.ItemContainerStyle>
+                    -->
+                <!-- This style hooks up the UI state to your data model state -->
+                <!--
+                    <Style x:Name="TreeNodeRegistry" TargetType="{x:Type TreeViewItem}">
+                        <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
+                        <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                        <Setter Property="VerticalContentAlignment" Value="Top"/>
+                        -->
+                <!-- <Setter Property="VirtualizingStackPanel.IsVirtualizing" Value="false"/>-->
+                <!--
+
+                    </Style>
+                </TreeView.ItemContainerStyle>-->
+            </TreeView>
         </Grid>
     </DockPanel>
 </Window>
