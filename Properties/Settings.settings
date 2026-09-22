@@ -2,10 +2,22 @@
 <SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="AssetRegistryModMigrator.Properties" GeneratedClassName="Settings">
   <Profiles />
   <Settings>
-    <Setting Name="DonorAssetRegistry" Type="System.String" Scope="User">
+    <Setting Name="Main_DonorAssetRegistryFile" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
     </Setting>
-    <Setting Name="ReceiverAssetRegistry" Type="System.String" Scope="User">
+    <Setting Name="Main_ReceiverAssetRegistryFile" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="Converter_PoetryProjectFile" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="Main_Test_SubfolderFile" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="Main_Test_Subfolder2File" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="Options_Secrets_TestFile" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
     </Setting>
   </Settings>

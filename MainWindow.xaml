@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:AssetRegistryModMigrator"
         xmlns:Model="clr-namespace:AssetRegistryModMigrator.Model" 
         mc:Ignorable="d"
-        Title="ARMM" Height="450" Width="900" MinWidth="900" Loaded="Window_Loaded">
+        Title="ARMM" Height="450" Width="900" MinWidth="900" Loaded="Window_Loaded" Closing="Window_Closing">
     <Window.Resources>
         <Style TargetType="TreeViewItem">
             <Setter Property="HorizontalContentAlignment" Value="Left"/>
@@ -20,14 +20,10 @@
         </HierarchicalDataTemplate>
 
         <DataTemplate DataType="{x:Type Model:FileNode}">
-            
-            <StackPanel Orientation="Horizontal">
-                
+            <StackPanel Orientation="Horizontal" MouseRightButtonDown="StackPanel_MouseRightButtonDown" DataContext="{Binding }">
                 <StackPanel.ContextMenu>
                     <ContextMenu>
-                        <MenuItem Header="View" Click="View_OnClick"/>
-                        <MenuItem Header="Edit" Click="Edit_OnClick"/>
-                        <MenuItem Header="Delete" Click="Delete_OnClick"/>
+                        <MenuItem Header="View Json" ToolTip="Open a window with the json data" Click="View_OnClick" DataContext="{Binding }"/>
                     </ContextMenu>
                 </StackPanel.ContextMenu>
                 <CheckBox Click="CheckBox_Click" IsChecked="{Binding Selected,UpdateSourceTrigger=PropertyChanged}" DataContext="{Binding }" />
@@ -40,8 +36,13 @@
             <MenuItem Header="_File">
                 <MenuItem Header="_Open" Click="DonorRegistryDialog_Click"/>
                 <MenuItem Header="_Save" Click="SaveList_Click"/>
+                <MenuItem Header="S_aveAs" Click="SaveList_Click"/>
+                <MenuItem Header="Se_ttings" Click="Settings_Click"/>
             </MenuItem>
-            <TextBlock Text="Hello" HorizontalAlignment="Right" Margin="0,0,0,0"/>
+            <MenuItem Header="_Tools">
+                <MenuItem Header="_JsonToBin" Click="JsonToBin_Click"/>
+                <MenuItem Header="_BinToJson" Click="BinToJson_Click"/>
+            </MenuItem>
         </Menu>
         <Grid Background="LightGray">
             <Grid.ColumnDefinitions>
@@ -56,16 +57,15 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <TreeView Grid.Column="0" x:Name="AssetList" Grid.Row="0" HorizontalAlignment="Stretch" SelectedItemChanged="AssetList_SelectionChanged" TreeViewItem.Selected="TreeViewItem_Selected" TreeViewItem.Expanded="AssetList_Expanded" DataContextChanged="AssetList_DataContextChanged">
+            <TreeView Grid.Column="0" x:Name="AssetList" Grid.Row="0" HorizontalAlignment="Stretch" SelectedItemChanged="AssetList_SelectionChanged" TreeViewItem.Expanded="AssetList_Expanded">
                 <TreeView.ItemContainerStyle>
                     <!-- This style hooks up the UI state to your data model state -->
-                    <Style x:Name="TreeNodeRegistry" TargetType="{x:Type TreeViewItem}">
+                    <Style TargetType="{x:Type TreeViewItem}">
                         <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
                         <Setter Property="HorizontalContentAlignment" Value="Left"/>
                         <Setter Property="VerticalContentAlignment" Value="Top"/>
-                        <!--<Setter Property="Margin" Value="-10,3,0,0" />-->
-                        <!-- <Setter Property="VirtualizingStackPanel.IsVirtualizing" Value="false"/>-->
-
+                        <EventSetter Event="Loaded" Handler="TreeViewItem_Loaded" />
+                        <Setter Property="VirtualizingStackPanel.IsVirtualizing" Value="false"/>
                     </Style>
                 </TreeView.ItemContainerStyle>
            

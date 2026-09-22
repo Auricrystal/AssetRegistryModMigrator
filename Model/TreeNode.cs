@@ -24,8 +24,8 @@ namespace AssetRegistryModMigrator.Model
         {
             _name = asset.PackageName.Split("/", StringSplitOptions.RemoveEmptyEntries).Last();
         }
-        public int Depth { get => (IsRoot ? 1 : ParentNode.Depth + 1); }
-        public int HashCode { get => GetHashCode(); }
+        public int Depth { get => ParentNode is not null ? ParentNode.Depth + 1 : 1; }
+        public int HashCode => GetHashCode();
         private string _name = "";
         public string Name { get { return _name; } set { _name = value; OnPropertyChanged("Name"); } }
         public string Path { get { return (ParentNode is not null) ? ParentNode?.ToString() + "/" + Name : "/" + Name; } }
@@ -60,52 +60,27 @@ namespace AssetRegistryModMigrator.Model
                 }
             }
         }
-
+        public TreeViewItem? OwningTreeViewItem {  get; set; }
 
         public override string? ToString()
         {
             return (ParentNode is not null) ? ParentNode?.ToString() + "/" + Name : "/" + Name;
         }
 
-        public virtual List<Asset> GetAllAssets()
-        {
-            return new List<Asset>();
-        }
+        public virtual List<Asset> GetAllAssets() => [];
 
         public bool TreeHasMatchingName(string search)
         {
-            //Debug.WriteLine("Depth: "+Depth);
-            //if (FullPath.Contains("Award", StringComparison.OrdinalIgnoreCase))
-            // return false;
-
             if (string.IsNullOrWhiteSpace(search)) return true;
-            if (IsLeaf)
-            {
-                var temp = this;
-                bool found = FullPath.Contains(search, StringComparison.OrdinalIgnoreCase);
-                //if (found)
-                //Debug.WriteLine($"Match Found:{FullPath} Contains:{search} {FullPath.Contains(search, StringComparison.OrdinalIgnoreCase)} at Depth:{Depth}".Replace(search, $"<Bold>{search}</Bold>"));
-                return found;
-            }
+            if (IsLeaf) return FullPath.Contains(search, StringComparison.OrdinalIgnoreCase);
 
-            if (this is FolderNode)
-                foreach (TreeNode t in (this as FolderNode).Children)
+            if (this is FolderNode folder)
+                foreach (var t in folder.Children)
                     if (t.TreeHasMatchingName(search))
                         return true;
 
             return false;
-
         }
-
-        //public virtual void PropagateChecks(bool? check) { Checked = check; }
-    }
-    public class TreeTrunk
-    {
-        public IEnumerable<TreeNode>? FullTree { get; set; }
-
-        public IEnumerable<FileNode>? Leaves { get; set; }
-
-        //public FileNode? GetLeaf(Func<FileNode,bool> predicate) {  return Leaves.Where<FileNode>(predicate).Single(); }
     }
 
     public abstract class ObservableObject : INotifyPropertyChanged

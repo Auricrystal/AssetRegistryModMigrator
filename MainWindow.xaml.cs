@@ -1,9 +1,14 @@
 ﻿using AssetRegistryModMigrator.Classes;
 using AssetRegistryModMigrator.Model;
+using AssetRegistryModMigrator.Windows;
+using IronPython;
+using IronPython.Hosting;
+using Microsoft.Scripting.Hosting;
 using Microsoft.Win32;
 using Newtonsoft.Json;
 using System.CodeDom;
 using System.ComponentModel;
+using System.Configuration;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -22,8 +27,8 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
+using static Community.CsharpSqlite.Sqlite3;
 using static System.Net.WebRequestMethods;
-
 
 
 namespace AssetRegistryModMigrator
@@ -35,9 +40,11 @@ namespace AssetRegistryModMigrator
     {
         AssetRegistry? DonorRegistry { get; set; }
         AssetRegistry? ReceiverRegistry { get; set; }
+        PoetryManager? PM { get; set; }
         //List<Asset>? SelectedAssets { get; set; }
         List<FileNode> CheckedItems { get; set; }
         //TreeTrunk Trunk { get; set; }
+        //List<Window> ChildWindows { get; set; } = new List<Window>();
         static Properties.Settings SaveData { get => Properties.Settings.Default; }
         private Predicate<object>? _searchFilter { get; set; }
         public Predicate<object>? SearchFilter
@@ -60,6 +67,7 @@ namespace AssetRegistryModMigrator
             //SelectedAssets = new();
             CheckedItems = [];
             //Trunk = new TreeTrunk();
+            //InitPythonIncludedEnvironment();
 
 
         }
@@ -68,8 +76,9 @@ namespace AssetRegistryModMigrator
         {
             //string filechosen = "";
             DonorRegistry = AssetRegistry.PickRegistryDialog(out string filechosen);
-            SaveData.DonorAssetRegistry = filechosen;
+            SaveData.Main_DonorAssetRegistryFile = filechosen;
             SaveData.Save();
+
             //    List<FileNode>? leaves;
             //    var temp = ItemProvider.BuildTree(DonorRegistry?.State.Assets, out leaves);
             //    Trunk.FullTree = temp;
@@ -92,20 +101,6 @@ namespace AssetRegistryModMigrator
             CheckBox Clicked = ((CheckBox)sender);
             FileNode? test = (FileNode)Clicked.DataContext ?? null;
 
-            //var tree = Clicked.FindParentTest<TreeViewItem>();
-
-            //if (tree == null) return;
-
-            //tree.IsSelected = Clicked.IsChecked ?? false;
-            //try
-            //{
-            //    FileNode? TreeNode2 = Trunk.Leaves.Single(x => { return x.FullPath == test?.FullPath; });
-            //    if (TreeNode2 == null) return;
-            //}
-            //catch (InvalidOperationException) { Debug.WriteLine("More than one element, be more specific"); }
-
-
-
             switch (Clicked.IsChecked)
             {
                 case true:
@@ -117,52 +112,32 @@ namespace AssetRegistryModMigrator
                     break;
             }
         }
-
-        private void TreeViewItem_Selected(object sender, RoutedEventArgs e)
-        {
-        }
-
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
 
-            DonorRegistry = AssetRegistry.CreateRegistry(SaveData.DonorAssetRegistry);
-            ReceiverRegistry = AssetRegistry.CreateRegistry(SaveData.ReceiverAssetRegistry);
-            //if (DonorRegistry is null)
-            //    return;
-            //List<FileNode> leaves;
-            //DonorRegistry.BuildTree();
-            //Trunk.FullTree = temp;
-            //Trunk.Leaves = leaves;
-            AssetList.ItemsSource = DonorRegistry.BuildTree();
+            DonorRegistry = AssetRegistry.CreateRegistry(SaveData.Main_DonorAssetRegistryFile);
+            ReceiverRegistry = AssetRegistry.CreateRegistry(SaveData.Main_ReceiverAssetRegistryFile);
 
+            AssetList.ItemsSource = DonorRegistry?.BuildTree() ?? null;
+
+            PM = new PoetryManager("C:/Users/AuriCrystal/Desktop/R2Modding/SchattenTool/AssetRegistryEditor");
+            //PM.JsonToBin();
         }
 
         private void View_OnClick(object sender, RoutedEventArgs e)
         {
-            var selecteditem = AssetList.SelectedItem;
-            //var text = "";
-            if (selecteditem is not FileNode node)
+            FileNode? node = null;
+            if (sender is MenuItem menu)
+                if (menu.DataContext is FileNode)
+                    node = (FileNode)menu.DataContext;
+
+            if (node is null)
                 return;
 
-                //text = node?.GetAllAssets().Select(x => JsonConvert.SerializeObject(x, Formatting.Indented, new JsonSerializerSettings() { })).Aggregate((first, second) => first + ",\n" + second);
-
-            JsonViewbox newWindow = new JsonViewbox(selecteditem as FileNode);
-            //newWindow.DataContext = this;
-            
-            newWindow.Show();
+            _ = new JsonViewbox(node);
+            //Debug.WriteLine(OwnedWindows.Count);
         }
 
-        private void Edit_OnClick(object sender, RoutedEventArgs e)
-        {
-
-        }
-
-        private void Delete_OnClick(object sender, RoutedEventArgs e)
-        {
-
-        }
-
-        //Dispatcher dispatcher = Application.Current.Dispatcher;
         private void SearchBar_TextChanged(object sender, TextChangedEventArgs e)
         {
             TextBox textBoxName = (TextBox)sender;
@@ -177,10 +152,6 @@ namespace AssetRegistryModMigrator
         protected static void InvokeAction(Action action)
         {
             Application.Current.Dispatcher.BeginInvoke(new Action(() => { action(); }));
-        }
-        private void AssetList_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
-        {
-
         }
 
         private void SaveList_Click(object sender, RoutedEventArgs e)
@@ -201,5 +172,49 @@ namespace AssetRegistryModMigrator
             }
             catch (Exception ex) { Debug.WriteLine($"{ex.Message}"); }
         }
+
+        private void Window_Closing(object sender, CancelEventArgs e)
+        {
+            foreach (Window window in OwnedWindows) window.Close();
+        }
+        private void JsonToBin_Click(object sender, RoutedEventArgs e)
+        {
+            if (PM is not null)
+                PM.JsonToBin();
+        }
+        private void BinToJson_Click(object sender, RoutedEventArgs e)
+        {
+            if (PM is not null)
+                PM.BinToJson();
+        }
+
+        private void StackPanel_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (
+                sender is not StackPanel p ||
+                p.DataContext is not TreeNode f ||
+                f.OwningTreeViewItem is null
+                )
+                return;
+
+            f.OwningTreeViewItem.IsSelected = true;
+        }
+
+        private void TreeViewItem_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (sender is not TreeViewItem item) return;
+            if (item.DataContext is not TreeNode node) return;
+
+            Debug.WriteLine($"TreeViewItem Loaded: {node.Name}");
+            //var test1 = item.GetStoredNode<FolderNode>();
+            //var test = item.GetStoredNode<FileNode>();
+            node.OwningTreeViewItem = item;
+        }
+
+        private void Settings_Click(object sender, RoutedEventArgs e)
+        {
+            _ = new Settings();
+        }
+
     }
 }

@@ -26,24 +26,72 @@ namespace AssetRegistryModMigrator.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("")]
-        public string DonorAssetRegistry {
+        public string Main_DonorAssetRegistryFile {
             get {
-                return ((string)(this["DonorAssetRegistry"]));
+                return ((string)(this["Main_DonorAssetRegistryFile"]));
             }
             set {
-                this["DonorAssetRegistry"] = value;
+                this["Main_DonorAssetRegistryFile"] = value;
             }
         }
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("")]
-        public string ReceiverAssetRegistry {
+        public string Main_ReceiverAssetRegistryFile {
             get {
-                return ((string)(this["ReceiverAssetRegistry"]));
+                return ((string)(this["Main_ReceiverAssetRegistryFile"]));
             }
             set {
-                this["ReceiverAssetRegistry"] = value;
+                this["Main_ReceiverAssetRegistryFile"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string Converter_PoetryProjectFile {
+            get {
+                return ((string)(this["Converter_PoetryProjectFile"]));
+            }
+            set {
+                this["Converter_PoetryProjectFile"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string Main_Test_SubfolderFile {
+            get {
+                return ((string)(this["Main_Test_SubfolderFile"]));
+            }
+            set {
+                this["Main_Test_SubfolderFile"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string Main_Test_Subfolder2File {
+            get {
+                return ((string)(this["Main_Test_Subfolder2File"]));
+            }
+            set {
+                this["Main_Test_Subfolder2File"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string Options_Secrets_TestFile {
+            get {
+                return ((string)(this["Options_Secrets_TestFile"]));
+            }
+            set {
+                this["Options_Secrets_TestFile"] = value;
             }
         }
     }

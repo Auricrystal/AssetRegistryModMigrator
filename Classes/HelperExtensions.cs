@@ -1,4 +1,5 @@
 ﻿using AssetRegistryModMigrator.Model;
+using Newtonsoft.Json.Linq;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Windows;
@@ -116,6 +117,30 @@ namespace AssetRegistryModMigrator.Classes
                 }
                 FilterRecursively(childItem, predicate);
             }
+        }
+
+        /// <summary>
+        /// Grabs and auto-casts DataContext on a <see cref="TreeViewItem"/> into a subclass of <see cref="TreeNode"/> (<see cref="FileNode"/> or <see cref="FolderNode"/>).
+        /// </summary>
+        /// <typeparam name="T"><see cref="FileNode"/> or <see cref="FolderNode"/></typeparam>
+        /// <param name="item"><see cref="TreeViewItem"/> to attempt a cast on DataContext.</param>
+        /// <returns><see cref="FileNode"/>/<see cref="FolderNode"/></returns>
+        /// <exception cref="InvalidCastException">Will throw exception if DataContext doesnt inherit from <see cref="TreeNode"/>.</exception>
+        public static T? GetStoredNode<T>(this TreeViewItem item)
+        {
+            if (item.DataContext is null)
+                 return default; 
+
+            if(item.DataContext is not TreeNode n)
+                throw new InvalidCastException($"{item.DataContext.GetType().FullName} does not inherit from Base Class 'TreeNode'");
+
+            if (n is not T)
+            {
+                Debug.WriteLine($"Cast mismatch, was expecting {typeof(T).FullName} but got {item.DataContext.GetType().FullName}", "GetStoredNode.CastFailure");
+                return default;
+            }
+
+            return (T)Convert.ChangeType(n, typeof(T));
         }
 
     }

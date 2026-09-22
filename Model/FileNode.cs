@@ -1,6 +1,7 @@
 ﻿using AssetRegistryModMigrator.Classes;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+using System.Windows.Controls;
 
 namespace AssetRegistryModMigrator.Model
 {

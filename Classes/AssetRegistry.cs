@@ -110,8 +110,9 @@ namespace AssetRegistryModMigrator.Classes
         public Asset? FindAsset(int HashCode) => State.Assets[State.HashIndex[HashCode]];
         public static AssetRegistry? CreateRegistry(string path)
         {
-            if (!File.Exists(path))
+            if (!File.Exists(path)||Path.GetExtension(path) != ".json")
                 return null;
+
             // Open document
             string? json = File.ReadAllText(path);
             return JsonConvert.DeserializeObject<AssetRegistry>(json);

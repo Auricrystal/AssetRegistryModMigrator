@@ -29,8 +29,18 @@ namespace AssetRegistryModMigrator
         public JsonViewbox(FileNode file)
         {
             _file = file;
+
             InitializeComponent();
-            JsonTextBox.Text = file.GetAllAssets().Select(x => JsonConvert.SerializeObject(x, Formatting.Indented, new JsonSerializerSettings() { })).Aggregate((first, second) => first + ",\n" + second); ;
+            JsonTextBox.Text = file.GetAllAssets().Select(x => JsonConvert.SerializeObject(x, Formatting.Indented, new JsonSerializerSettings() { })).Aggregate((first, second) => first + ",\n" + second);
+            this.Show();
+        }
+        //public void Owner_Closing(object? sender, EventArgs e) { } //=> Close();
+
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            Owner = Application.Current.MainWindow;
+            //Application.Current.MainWindow.Closing += Owner_Closing;
+            Title = $"ARMM ({File.Name})";
         }
     }
 }
