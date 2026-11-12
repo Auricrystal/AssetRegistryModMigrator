@@ -1,9 +1,11 @@
 ﻿<Application x:Class="AssetRegistryModMigrator.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:AssetRegistryModMigrator"
+             xmlns:classes="clr-namespace:AssetRegistryModMigrator.Classes"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
-         
+        <Style TargetType="{x:Type Window}">
+            <Setter Property="classes:DarkTitleBarHelper.EnableDarkTitleBar" Value="True"/>
+        </Style>
     </Application.Resources>
 </Application>

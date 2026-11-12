@@ -1,75 +1,82 @@
 ﻿using AssetRegistryModMigrator.Classes;
+using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
-
-namespace AssetRegistryModMigrator.Model
+using System.Linq;namespace AssetRegistryModMigrator.Model
 {
     public class FolderNode : TreeNode
     {
-        public FolderNode(string name) : base(name)
+        private bool _isLazyInitialized = false;
+        public bool IsLazyInitialized => _isLazyInitialized;        public FolderNode(string name, string fullPath) : base(name, fullPath)
         {
-            Children = [];
-        }
-
-        public FolderNode(string name, TreeNode parent) : base(name, parent)
+            Children = new ObservableCollection<TreeNode>();
+            // Add a temporary hidden dummy item so WPF renders the expansion arrow
+            Children.Add(new DummyNode());
+        }        public FolderNode(string name, string fullPath, TreeNode parent) : base(name, fullPath, parent)
         {
-            Children = [];
-        }
-
-        public ObservableCollection<TreeNode> Children { get; set; }
-
-        public FolderNode Chain(string folder)
+            Children = new ObservableCollection<TreeNode>();
+            Children.Add(new DummyNode());
+        }        public ObservableCollection<TreeNode> Children { get; set; }        /// <summary>
+        /// Instantly swaps out the placeholder dummy tracking nodes with actual live sub-assets on demand
+        /// </summary>
+        public void PerformLazyInitialization(IEnumerable<TreeNode> realChildren)
         {
-            var node = new FolderNode(folder, this);
-            Children.Add(node);
-            return node;
-        }
-        public FileNode? EndChain(Asset asset)
-        {
-            
-            if (Children.ToList().Exists(x => x.Name == asset.PackageName.Split("/", StringSplitOptions.RemoveEmptyEntries).Last()))
+            if (_isLazyInitialized) return;            Children.Clear();
+            foreach (var child in realChildren)
             {
-                FileNode? file = ((FileNode?)Children.ToList().Find(x => x.Name == asset.PackageName.Split("/", StringSplitOptions.RemoveEmptyEntries).Last()));
-
-                file?.AddAsset(asset);
-                return file;
+                Children.Add(child);
             }
-
-            var node = new FileNode(asset, this);
-            Children.Add(node);
-
-            return node;
-        }
-        public List<FileNode> GetAllFiles()
+            _isLazyInitialized = true;
+        }        public List<FileNode> GetAllFiles()
         {
             var files = new List<FileNode>();
-            foreach (var child in Children)
-            {
-                if (child is FileNode)
-                {
-                    files.Add((FileNode)child);
-                    continue;
-                }
-                files.AddRange(((FolderNode)child).GetAllFiles());
-            }
-
+            AccumulateFiles(this, files);
             return files;
-        }
-
-        public override List<Asset> GetAllAssets()
+        }        private static void AccumulateFiles(FolderNode folder, List<FileNode> files)
         {
-            return Children.SelectMany(x => x.GetAllAssets()).ToList();
-        }
-
-        public void SetExpansionAll(bool isExpanded)
+            var items = folder.Children;
+            for (int i = 0; i < items.Count; i++)
+            {
+                if (items[i] is FileNode file)
+                {
+                    files.Add(file);
+                }
+                else if (items[i] is FolderNode subFolder)
+                {
+                    AccumulateFiles(subFolder, files);
+                }
+            }
+        }        public override List<Asset> GetAllAssets()
+        {
+            var sharedResult = new List<Asset>(256);
+            var items = Children;
+            for (int i = 0; i < items.Count; i++)
+            {
+                if (items[i] is FileNode file) sharedResult.AddRange(file.Assets);
+                else if (items[i] is FolderNode subFolder) sharedResult.AddRange(subFolder.GetAllAssets());
+            }
+            return sharedResult;
+        }        public void SetExpansionAll(bool isExpanded)
         {
             IsExpanded = isExpanded;
-            foreach (var child in Children)
+            var items = Children;
+            for (int i = 0; i < items.Count; i++)
             {
-                if (child is not FolderNode)
-                    continue;
-                (child as FolderNode)?.SetExpansionAll(isExpanded);
+                if (items[i] is FolderNode folder)
+                {
+                    folder.SetExpansionAll(isExpanded);
+                }
             }
         }
-    }
-}
+    }    /// <summary>
+    /// Placeholder token class to safely trigger WPF layout arrows
+    /// </summary>
+    public class DummyNode : TreeNode
+    {
+        // FIX: IsVisible must remain TRUE so the WPF TreeView item style 
+        // renders the dropdown expansion arrows correctly on screen!
+        public DummyNode() : base("Loading...", "")
+        {
+            IsVisible = true;
+        }
+    }}

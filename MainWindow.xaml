@@ -4,92 +4,449 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:AssetRegistryModMigrator"
-        xmlns:Model="clr-namespace:AssetRegistryModMigrator.Model" 
+        xmlns:Model="clr-namespace:AssetRegistryModMigrator.Model"
+        xmlns:classes="clr-namespace:AssetRegistryModMigrator.Classes" 
         mc:Ignorable="d"
-        Title="ARMM" Height="450" Width="900" MinWidth="900" Loaded="Window_Loaded" Closing="Window_Closing">
+               Title="Asset Registry Mod Migrator"
+        Height="680" Width="1260" MinWidth="1000"
+        Background="#1E1E1E" Foreground="#E0E0E0"
+        Loaded="Window_Loaded" Closing="Window_Closing">
+
     <Window.Resources>
-        <Style TargetType="TreeViewItem">
+        <BooleanToVisibilityConverter x:Key="BoolToVisConverter"/>
+        
+        <classes:UnrealClassSplitConverter x:Key="ClassSplitConverter"/>
+
+        <!-- Dark Mode CheckBox Style for TreeView Leaves -->
+        <Style x:Key="DarkTreeCheckBoxStyle" TargetType="CheckBox">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Border x:Name="Box" Width="15" Height="15" CornerRadius="3"
+                                Background="#141414" BorderBrush="#555558" BorderThickness="1.2">
+                            <TextBlock x:Name="CheckMark" Text="✔" Foreground="#FFFFFF" FontSize="10" FontWeight="Bold"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Box" Property="Background" Value="#0E639C"/>
+                                <Setter TargetName="Box" Property="BorderBrush" Value="#3794FF"/>
+                                <Setter TargetName="CheckMark" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Box" Property="BorderBrush" Value="#3794FF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Dark ContextMenu Style (Removes the default light icon gutter square) -->
+        <Style TargetType="ContextMenu">
+            <Setter Property="Background" Value="#252526"/>
+            <Setter Property="Foreground" Value="#E0E0E0"/>
+            <Setter Property="BorderBrush" Value="#3E3E42"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ContextMenu">
+                        <Border Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        Padding="2" SnapsToDevicePixels="True">
+                            <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Dark MenuItem Style (Fixes white dropdown popup background) -->
+        <Style TargetType="MenuItem">
+            <Setter Property="Foreground" Value="#E0E0E0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="MenuItem">
+                        <Border x:Name="Border" Background="{TemplateBinding Background}"
+                        BorderBrush="Transparent" BorderThickness="1" SnapsToDevicePixels="True">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <ContentPresenter Grid.Column="1" ContentSource="Header"
+                                          Margin="{TemplateBinding Padding}"
+                                          RecognizesAccessKey="True" VerticalAlignment="Center"/>
+
+                                <!-- Submenu Arrow for items with children (like Debug >) -->
+                                <TextBlock x:Name="Arrow" Grid.Column="2" Text="▸" Foreground="#AAAAAA"
+                                   Margin="6,0,8,0" VerticalAlignment="Center" Visibility="Collapsed"/>
+
+                                <!-- Dark Dropdown Popup -->
+                                <Popup x:Name="PART_Popup" AllowsTransparency="True" Focusable="False"
+                               IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}"
+                               Placement="Bottom" PopupAnimation="Fade">
+                                    <Border Background="#252526" BorderBrush="#3E3E42" BorderThickness="1"
+                                    Padding="2" MinWidth="180">
+                                        <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle"/>
+                                    </Border>
+                                </Popup>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <!-- Place nested submenus (like Debug >) to the right instead of below -->
+                            <Trigger Property="Role" Value="SubmenuHeader">
+                                <Setter TargetName="Arrow" Property="Visibility" Value="Visible"/>
+                                <Setter TargetName="PART_Popup" Property="Placement" Value="Right"/>
+                            </Trigger>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#0E639C"/>
+                                <Setter TargetName="Border" Property="BorderBrush" Value="#3794FF"/>
+                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="#666666"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+
+        <!-- Virtualized TreeViewItem Style -->
+        <Style x:Key="VirtualizedTreeViewItemStyle" TargetType="TreeViewItem">
+            <Style.Resources>
+                <!-- Prevents WPF from turning selected items white when ContextMenu takes focus -->
+                <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#0E639C"/>
+                <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="#FFFFFF"/>
+                <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="#264F78"/>
+                <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}" Color="#FFFFFF"/>
+            </Style.Resources>
+            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
+            <Setter Property="Visibility" Value="{Binding IsVisible, Converter={StaticResource BoolToVisConverter}}"/>
+            <Setter Property="Foreground" Value="#E0E0E0"/>
             <Setter Property="HorizontalContentAlignment" Value="Left"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <EventSetter Event="Loaded" Handler="TreeViewItem_Loaded"/>
+            <EventSetter Event="Expanded" Handler="TreeViewItem_Expanded"/>
         </Style>
-        <HierarchicalDataTemplate DataType="{x:Type Model:FolderNode}" ItemsSource="{Binding Children}" >
-            <StackPanel Orientation="Horizontal">
-                <!--<CheckBox x:Name="DirectoryCheckmark" Click="CheckBox_Click" IsChecked="{Binding Selected,UpdateSourceTrigger=PropertyChanged}"  IsThreeState="True"/>-->
-                <TextBlock Text="{Binding Path=Name}"/>
+
+
+        <!-- File Leaf Template -->
+        <DataTemplate x:Key="FileLeafTemplate" DataType="{x:Type Model:FileNode}">
+            <StackPanel Orientation="Horizontal" Margin="2,2"
+                        MouseRightButtonDown="StackPanel_MouseRightButtonDown"
+                        MouseLeftButtonDown="StackPanel_MouseLeftButtonDown"
+                        Background="Transparent">
+                <StackPanel.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Inspect / Edit Properties..." Click="View_OnClick"/>
+                    </ContextMenu>
+                </StackPanel.ContextMenu>
+                <CheckBox Click="CheckBox_Click"
+                          IsChecked="{Binding Selected, UpdateSourceTrigger=PropertyChanged}"
+                          Style="{StaticResource DarkTreeCheckBoxStyle}"
+                          VerticalAlignment="Center" Margin="0,0,6,0"/>
+                <TextBlock Text="📄 " Foreground="#9CDCFE" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding Name}" ToolTip="{Binding FullPath}" Foreground="#E0E0E0" VerticalAlignment="Center"/>
+            </StackPanel>
+        </DataTemplate>
+
+        <!-- Folder Branch Template -->
+        <HierarchicalDataTemplate x:Key="FolderBranchTemplate" DataType="{x:Type Model:FolderNode}" ItemsSource="{Binding Children}">
+            <StackPanel Orientation="Horizontal" Margin="2,2">
+                <TextBlock Text="📁 " Foreground="#D7BA7D" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="#CCCCCC"/>
             </StackPanel>
         </HierarchicalDataTemplate>
 
-        <DataTemplate DataType="{x:Type Model:FileNode}">
-            <StackPanel Orientation="Horizontal" MouseRightButtonDown="StackPanel_MouseRightButtonDown" DataContext="{Binding }">
-                <StackPanel.ContextMenu>
-                    <ContextMenu>
-                        <MenuItem Header="View Json" ToolTip="Open a window with the json data" Click="View_OnClick" DataContext="{Binding }"/>
-                    </ContextMenu>
-                </StackPanel.ContextMenu>
-                <CheckBox Click="CheckBox_Click" IsChecked="{Binding Selected,UpdateSourceTrigger=PropertyChanged}" DataContext="{Binding }" />
-                <TextBlock Text="{Binding Path=Name}" ToolTip="{Binding Path=FullPath}"/>
-            </StackPanel>
-        </DataTemplate>
+        <!-- Unified Template Selector -->
+        <Model:TreeViewTemplateSelector x:Key="AssetTemplateSelector"
+                                        FolderTemplate="{StaticResource FolderBranchTemplate}"
+                                        FileTemplate="{StaticResource FileLeafTemplate}"/>
+
+        <!-- Dark Watermark SearchBox Style -->
+        <Style x:Key="SearchTextBoxStyle" TargetType="TextBox">
+            <Setter Property="Background" Value="#141414"/>
+            <Setter Property="Foreground" Value="#E0E0E0"/>
+            <Setter Property="CaretBrush" Value="#FFFFFF"/>
+            <Setter Property="BorderBrush" Value="#3E3E42"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="6,5"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Grid>
+                            <Border x:Name="Border" BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    Background="{TemplateBinding Background}"
+                                    CornerRadius="4" SnapsToDevicePixels="True">
+                                <ScrollViewer x:Name="PART_ContentHost" Focusable="False"
+                                              HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden"/>
+                            </Border>
+                            <TextBlock x:Name="PlaceholderText" Text="Type search term and press Enter..."
+                                       Foreground="#777777" Margin="8,5,4,4" IsHitTestVisible="False"
+                                       Visibility="Collapsed" FontStyle="Italic"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="Text" Value="">
+                                <Setter TargetName="PlaceholderText" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Border" Property="BorderBrush" Value="#0E639C"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Dark Card GroupBox Style -->
+        <Style x:Key="DarkPanelGroupBox" TargetType="GroupBox">
+            <Setter Property="Background" Value="#252526"/>
+            <Setter Property="BorderBrush" Value="#3E3E42"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Foreground" Value="#CCCCCC"/>
+            <Setter Property="Margin" Value="4"/>
+            <Setter Property="Padding" Value="8"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="GroupBox">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <Border Grid.Row="0" Background="#2D2D30" BorderBrush="#3E3E42"
+                                        BorderThickness="0,0,0,1" CornerRadius="5,5,0,0" Padding="10,7">
+                                    <ContentPresenter ContentSource="Header"
+                                                      TextBlock.FontWeight="Bold"
+                                                      TextBlock.FontSize="12"
+                                                      TextBlock.Foreground="#E0E0E0"/>
+                                </Border>
+                                <ContentPresenter Grid.Row="1" Margin="{TemplateBinding Padding}"/>
+                            </Grid>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
+
     <DockPanel>
-        <Menu DockPanel.Dock="Top">
+        <!-- Application Menu Top Area -->
+        <Menu DockPanel.Dock="Top" Background="#252526" BorderBrush="#3E3E42" BorderThickness="0,0,0,1" Padding="4,2">
             <MenuItem Header="_File">
-                <MenuItem Header="_Open" Click="DonorRegistryDialog_Click"/>
-                <MenuItem Header="_Save" Click="SaveList_Click"/>
-                <MenuItem Header="S_aveAs" Click="SaveList_Click"/>
-                <MenuItem Header="Se_ttings" Click="Settings_Click"/>
+                <MenuItem Header="Open Donor Registry..." Click="DonorRegistryDialog_Click"/>
+                <MenuItem Header="Open Receiver Registry..." Click="ReceiverRegistryDialog_Click"/>
+                <Separator Background="#3E3E42"/>
+                <MenuItem Header="Settings" Click="Settings_Click"/>
             </MenuItem>
             <MenuItem Header="_Tools">
-                <MenuItem Header="_JsonToBin" Click="JsonToBin_Click"/>
-                <MenuItem Header="_BinToJson" Click="BinToJson_Click"/>
+                <MenuItem Header="Json To Bin Compiler" Click="JsonToBin_Click" ToolTip="Convert a (.json) file to a (.bin)"/>
+                <MenuItem Header="Bin To Json Decompiler" Click="BinToJson_Click" ToolTip="Convert a (.bin) file to a (.json)"/>
+                <Separator Background="#3E3E42"/>
+                <MenuItem x:Name="DebugVerifyMenu" Header="Debug">
+                    <MenuItem x:Name="VerifyBinaryRoundtripMenuItem" Header="Verify Binary Roundtrip..." ToolTip="Validates if a .bin file reconstructs perfectly after JSON extraction"/>
+                    <MenuItem x:Name="VerifyJsonRoundtripMenuItem" Header="Verify JSON Roundtrip..." ToolTip="Validates if a .json configuration packs and unpacks flawlessly"/>
+                </MenuItem>
             </MenuItem>
         </Menu>
-        <Grid Background="LightGray">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="200*" MaxWidth="300" MinWidth="200"/>
-                <ColumnDefinition Width="2"/>
-                <ColumnDefinition Width="500*" MinWidth="300"/>
-                <ColumnDefinition Width="2"/>
-                <ColumnDefinition Width="200*" MaxWidth="300" MinWidth="200"/>
-            </Grid.ColumnDefinitions>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="90*"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
 
-            <TreeView Grid.Column="0" x:Name="AssetList" Grid.Row="0" HorizontalAlignment="Stretch" SelectedItemChanged="AssetList_SelectionChanged" TreeViewItem.Expanded="AssetList_Expanded">
-                <TreeView.ItemContainerStyle>
-                    <!-- This style hooks up the UI state to your data model state -->
-                    <Style TargetType="{x:Type TreeViewItem}">
-                        <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
-                        <Setter Property="HorizontalContentAlignment" Value="Left"/>
-                        <Setter Property="VerticalContentAlignment" Value="Top"/>
-                        <EventSetter Event="Loaded" Handler="TreeViewItem_Loaded" />
-                        <Setter Property="VirtualizingStackPanel.IsVirtualizing" Value="false"/>
-                    </Style>
-                </TreeView.ItemContainerStyle>
-           
-            </TreeView>
-            <!--<TextBox x:Name="SearchBar" MinWidth="200"  Grid.Row="1" Grid.ColumnSpan="2" TextChanged="SearchBar_TextChanged"/>-->
-            <GridSplitter Grid.Column="1" Width="2" Background="Red" Panel.ZIndex="2" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" HorizontalAlignment="Center"/>
-            <TextBox FontSize="10" Grid.Column="2" DockPanel.Dock="Right" x:Name="JsonBox" Background="LightGray" IsReadOnly="True" Panel.ZIndex="-1" HorizontalAlignment="Stretch"/>
-            <GridSplitter Grid.Column="3" Width="2" Background="Red" Panel.ZIndex="2" ResizeDirection="Columns"  HorizontalAlignment="Center" ResizeBehavior="PreviousAndNext"/>
-            <TreeView x:Name="ReceiverAssetList" Grid.Row="0" Grid.Column="4" Panel.ZIndex="1" HorizontalAlignment="Stretch">
-                <!--<TreeView.ItemContainerStyle>
-                    -->
-                <!-- This style hooks up the UI state to your data model state -->
-                <!--
-                    <Style x:Name="TreeNodeRegistry" TargetType="{x:Type TreeViewItem}">
-                        <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
-                        <Setter Property="HorizontalContentAlignment" Value="Left"/>
-                        <Setter Property="VerticalContentAlignment" Value="Top"/>
-                        -->
-                <!-- <Setter Property="VirtualizingStackPanel.IsVirtualizing" Value="false"/>-->
-                <!--
+        <!-- Main Workspace Container -->
+        <Grid Background="#1E1E1E" Margin="6">
+            <Grid x:Name="WorkspaceGrid">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="350*" MinWidth="250"/>
+                    <ColumnDefinition Width="6"/>
+                    <ColumnDefinition Width="460*" MinWidth="360"/>
+                    <ColumnDefinition Width="6"/>
+                    <ColumnDefinition Width="350*" MinWidth="250"/>
+                </Grid.ColumnDefinitions>
 
-                    </Style>
-                </TreeView.ItemContainerStyle>-->
-            </TreeView>
+                <!-- ================= LEFT: DONOR REGISTRY TREE ================= -->
+                <GroupBox Grid.Column="0" Header="DONOR REGISTRY (READ-ONLY)" Style="{StaticResource DarkPanelGroupBox}">
+                    <DockPanel>
+                        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                            <TextBlock Text="🔍" VerticalAlignment="Center" Margin="2,0,6,0" Foreground="#888888"/>
+                            <TextBox x:Name="DonorSearchBar" Style="{StaticResource SearchTextBoxStyle}" KeyDown="SearchBar_KeyDown" Tag="Donor"
+                                     ToolTip="Type tokens split by spaces to quickly search donor registry paths"/>
+                        </DockPanel>
+
+                        <TreeView x:Name="AssetList"
+                                  Background="#1E1E1E" BorderBrush="#333337" BorderThickness="1" Padding="4"
+                                  ItemContainerStyle="{StaticResource VirtualizedTreeViewItemStyle}"
+                                  ItemTemplateSelector="{StaticResource AssetTemplateSelector}"
+                                  VirtualizingStackPanel.IsVirtualizing="True"
+                                  VirtualizingStackPanel.VirtualizationMode="Recycling"
+                                  VirtualizingStackPanel.ScrollUnit="Pixel"
+                                  VirtualizingStackPanel.CacheLength="2,3"
+                                  VirtualizingStackPanel.CacheLengthUnit="Page"/>
+                    </DockPanel>
+                </GroupBox>
+
+                <GridSplitter Grid.Column="1" Width="6" Background="Transparent" HorizontalAlignment="Stretch"/>
+
+                <!-- ================= CENTER: STAGING QUEUE ================= -->
+                <GroupBox Grid.Column="2" Header="STAGING QUEUE" Style="{StaticResource DarkPanelGroupBox}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <DataGrid Grid.Row="0" x:Name="StagingDataGrid" AutoGenerateColumns="False" IsReadOnly="True"
+                                  SelectionMode="Extended" Background="#1E1E1E" Foreground="#E0E0E0"
+                                  RowBackground="#252526" AlternatingRowBackground="#2A2A2D"
+                                  BorderBrush="#333337" BorderThickness="1"
+                                  RowHeaderWidth="0" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#333337"
+                                  MouseDoubleClick="StagingDataGrid_MouseDoubleClick">
+                            <DataGrid.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="Edit Asset Properties..." Click="StagingEdit_Click"/>
+                                </ContextMenu>
+                            </DataGrid.ContextMenu>
+                            <DataGrid.ColumnHeaderStyle>
+                                <Style TargetType="DataGridColumnHeader">
+                                    <Setter Property="Background" Value="#2D2D30"/>
+                                    <Setter Property="Foreground" Value="#CCCCCC"/>
+                                    <Setter Property="Padding" Value="8,6"/>
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                    <Setter Property="BorderBrush" Value="#3E3E42"/>
+                                    <Setter Property="BorderThickness" Value="0,0,1,1"/>
+                                </Style>
+                            </DataGrid.ColumnHeaderStyle>
+                            <DataGrid.CellStyle>
+                                <Style TargetType="DataGridCell">
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="Padding" Value="4,5"/>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter Property="Background" Value="#0E639C"/>
+                                            <Setter Property="Foreground" Value="#FFFFFF"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DataGrid.CellStyle>
+                            <DataGrid.RowStyle>
+                                <Style TargetType="DataGridRow">
+                                    <Setter Property="ToolTip" Value="{Binding FullPath}"/>
+                                </Style>
+                            </DataGrid.RowStyle>
+                            <DataGrid.Columns>
+                                <!-- 1. Package Native Class (Module Pill + Class Name) -->
+                                    <DataGridTemplateColumn Header="Package Native Class" Width="250*" SortMemberPath="NativeParentClass">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="4,0"
+                            ToolTip="{Binding NativeParentClass}">
+                                                    <Border Background="#2D4F3E" BorderBrush="#4EC9B0" BorderThickness="1"
+                            CornerRadius="8" Padding="7,1" Margin="0,0,7,0" VerticalAlignment="Center"
+                            Visibility="{Binding NativeParentClass, Converter={StaticResource ClassSplitConverter}, ConverterParameter=HasModule}">
+                                                        <TextBlock Text="{Binding NativeParentClass, Converter={StaticResource ClassSplitConverter}, ConverterParameter=Module}"
+                                   Foreground="#4EC9B0" FontFamily="Consolas" FontSize="10" FontWeight="SemiBold"/>
+                                                    </Border>
+                                                    <TextBlock Text="{Binding NativeParentClass, Converter={StaticResource ClassSplitConverter}, ConverterParameter=Class}"
+                               Foreground="#9CDCFE" FontFamily="Consolas" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+
+                                    <!-- 2. Asset Class (Module Pill + Class Name) -->
+                                    <DataGridTemplateColumn Header="Asset Class" Width="230*" SortMemberPath="Class">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="4,0"
+                            ToolTip="{Binding Class}">
+                                                    <Border Background="#263B5E" BorderBrush="#569CD6" BorderThickness="1"
+                            CornerRadius="8" Padding="7,1" Margin="0,0,7,0" VerticalAlignment="Center"
+                            Visibility="{Binding Class, Converter={StaticResource ClassSplitConverter}, ConverterParameter=HasModule}">
+                                                        <TextBlock Text="{Binding Class, Converter={StaticResource ClassSplitConverter}, ConverterParameter=Module}"
+                                   Foreground="#9CDCFE" FontFamily="Consolas" FontSize="10" FontWeight="SemiBold"/>
+                                                    </Border>
+                                                    <TextBlock Text="{Binding Class, Converter={StaticResource ClassSplitConverter}, ConverterParameter=Class}"
+                               Foreground="#E0E0E0" FontFamily="Consolas" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+
+                                    <!-- 3. Package Name + Edited Badge -->
+                                <DataGridTemplateColumn Header="Package Name" Width="220*" SortMemberPath="Name">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="4,0">
+                                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                                <Border Background="#5A4315" BorderBrush="#D7BA7D" BorderThickness="1"
+                            CornerRadius="4" Padding="6,1" Margin="8,0,0,0" VerticalAlignment="Center"
+                            Visibility="{Binding IsEdited, Converter={StaticResource BoolToVisConverter}}">
+                                                    <TextBlock Text="✎ Edited" Foreground="#D7BA7D" FontSize="10" FontWeight="Bold"/>
+                                                </Border>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <UniformGrid Grid.Row="1" Columns="2" Margin="0,10,0,0">
+                            <Button Content="❌ Clear Queue" Padding="10,8" Margin="0,0,5,0" Click="ClearStagingQueue_Click"
+                                    Background="#3A2323" Foreground="#F48771" BorderBrush="#6E3636" BorderThickness="1"
+                                    FontWeight="SemiBold" Cursor="Hand"/>
+                            <Button Content="➕ Inject Queue" Padding="10,8" Margin="5,0,0,0" Click="InjectToReceiver_Click"
+                                    Background="#0E639C" Foreground="#FFFFFF" BorderBrush="#3794FF" BorderThickness="1"
+                                    FontWeight="Bold" Cursor="Hand"/>
+                        </UniformGrid>
+                    </Grid>
+                </GroupBox>
+
+                <GridSplitter Grid.Column="3" Width="6" Background="Transparent" HorizontalAlignment="Stretch"/>
+
+                <!-- ================= RIGHT: RECEIVER TARGET REGISTRY TREE ================= -->
+                <GroupBox Grid.Column="4" Header="RECEIVER REGISTRY" Style="{StaticResource DarkPanelGroupBox}">
+                    <DockPanel>
+                        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                            <TextBlock Text="🔍" VerticalAlignment="Center" Margin="2,0,6,0" Foreground="#888888"/>
+                            <TextBox x:Name="ReceiverSearchBar" Style="{StaticResource SearchTextBoxStyle}" KeyDown="ReceiverSearchBar_KeyDown"
+                                     ToolTip="Search assets natively loaded inside destination model tree environment"/>
+                        </DockPanel>
+
+                        <TreeView x:Name="ReceiverAssetList"
+                                  Background="#1E1E1E" BorderBrush="#333337" BorderThickness="1" Padding="4"
+                                  ItemContainerStyle="{StaticResource VirtualizedTreeViewItemStyle}"
+                                  ItemTemplateSelector="{StaticResource AssetTemplateSelector}"
+                                  VirtualizingStackPanel.IsVirtualizing="True"
+                                  VirtualizingStackPanel.VirtualizationMode="Recycling"
+                                  VirtualizingStackPanel.ScrollUnit="Pixel"
+                                  VirtualizingStackPanel.CacheLength="2,3"
+                                  VirtualizingStackPanel.CacheLengthUnit="Page"/>
+                    </DockPanel>
+                </GroupBox>
+            </Grid>
+            <!-- LOADING OVERLAY -->
+            <Grid x:Name="LoadingOverlay" Visibility="Collapsed" Background="#CC141414">
+                <Border CornerRadius="8" Background="#252526" Padding="30,20"
+                        HorizontalAlignment="Center" VerticalAlignment="Center" BorderBrush="#3E3E42" BorderThickness="1">
+                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
+                        <ProgressBar IsIndeterminate="True" Width="220" Height="10" Margin="0,0,0,12"
+                                     Background="#141414" Foreground="#0E639C" BorderBrush="#3E3E42"/>
+                        <TextBlock x:Name="LoadingStatusText" Text="Loading Asset Manifest Registries..."
+                                   FontWeight="SemiBold" FontSize="13" Foreground="#E0E0E0" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
         </Grid>
     </DockPanel>
 </Window>

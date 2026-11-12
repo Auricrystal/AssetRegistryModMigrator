@@ -5,8 +5,202 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:AssetRegistryModMigrator"
         mc:Ignorable="d"
-        Height="300" Width="400" SizeToContent="WidthAndHeight" DataContext="{Binding RelativeSource={RelativeSource Self}}" x:Name="JsonWindow">
-    <Grid >
-        <TextBox Name="JsonTextBox" Background="DarkGray" IsReadOnly="True" />
+            Title="{Binding WindowTitle}"
+        Height="730" Width="900"
+        Background="#1E1E1E" Foreground="#E0E0E0"
+        WindowStartupLocation="CenterOwner">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </Window.Resources>
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 1. HEADER BANNER -->
+        <Border Grid.Row="0" Background="#252526" BorderBrush="#3E3E42" BorderThickness="1" CornerRadius="6" Padding="14" Margin="0,0,0,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding PrimaryAssetName}" FontSize="20" FontWeight="Bold" Foreground="#FFFFFF"/>
+                        <!-- Mode Badge -->
+                        <Border Background="#5A4315" BorderBrush="#D7BA7D" BorderThickness="1" CornerRadius="4" Padding="8,2" Margin="10,0,0,0"
+                                VerticalAlignment="Center" Visibility="{Binding CanEdit, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Text="EDITABLE MODE" Foreground="#D7BA7D" FontSize="10" FontWeight="Bold"/>
+                        </Border>
+                    </StackPanel>
+                    <TextBox Text="{Binding PackageName, Mode=OneWay}" IsReadOnly="True" BorderThickness="0"
+                             Background="Transparent" Foreground="#9CDCFE" FontFamily="Consolas" FontSize="12" Margin="0,4,0,0"/>
+                </StackPanel>
+
+                <ItemsControl Grid.Column="1" ItemsSource="{Binding AssetClasses}" VerticalAlignment="Center">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Vertical" HorizontalAlignment="Right"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="#0E639C" CornerRadius="4" Padding="10,4" Margin="0,2"
+                                    ToolTip="{Binding AssetName, StringFormat='AssetName: {0}'}">
+                                <TextBlock Text="{Binding ShortName}" Foreground="White" FontWeight="SemiBold" FontSize="11"/>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Grid>
+        </Border>
+
+        <!-- 2. DEDUPLICATED METADATA & PACKAGE FLAGS -->
+        <Border Grid.Row="1" Background="#252526" BorderBrush="#3E3E42" BorderThickness="1" CornerRadius="6" Padding="14" Margin="0,0,0,12">
+            <StackPanel>
+                <UniformGrid Columns="3" Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock Text="PACKAGE PATH" FontSize="10" Foreground="#888888" FontWeight="Bold"/>
+                        <TextBlock Text="{Binding PackagePath}" FontFamily="Consolas" Margin="0,2,0,0"/>
+                    </StackPanel>
+                    <StackPanel>
+                        <TextBlock Text="CHUNK IDS (MERGED)" FontSize="10" Foreground="#888888" FontWeight="Bold"/>
+                        <TextBlock Text="{Binding ChunkIdsDisplay}" FontFamily="Consolas" Margin="0,2,0,0"/>
+                    </StackPanel>
+                    <StackPanel>
+                        <TextBlock Text="NUMBERLESS TAGS" FontSize="10" Foreground="#888888" FontWeight="Bold"/>
+                        <TextBlock Text="{Binding NumberlessTagsDisplay}" FontFamily="Consolas" Margin="0,2,0,0"/>
+                    </StackPanel>
+                </UniformGrid>
+
+                <Separator Background="#3E3E42" Margin="0,4,0,10"/>
+
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                    <TextBlock Text="PACKAGE FLAGS" FontSize="10" Foreground="#888888" FontWeight="Bold" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding PackageFlagsDisplay, StringFormat='  ({0})'}" FontSize="11" Foreground="#B5CEA8" FontFamily="Consolas"/>
+                </StackPanel>
+
+                <ItemsControl ItemsSource="{Binding ActivePackageFlags}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="#2D4F3E" BorderBrush="#4EC9B0" BorderThickness="1" CornerRadius="12" Padding="10,3" Margin="0,0,6,6"
+                                    ToolTip="{Binding HexValue}">
+                                <TextBlock Text="{Binding Name}" Foreground="#4EC9B0" FontFamily="Consolas" FontSize="11" FontWeight="SemiBold"/>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+
+        <!-- 3. MERGED TAGS & VALUES TABLE (EDITABLE IN STAGING / RECEIVER) -->
+        <GroupBox Grid.Row="2" BorderBrush="#3E3E42" Foreground="#CCCCCC" Padding="6">
+            <GroupBox.Header>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="Merged Tags &amp; Values" VerticalAlignment="Center"/>
+                    <TextBlock Text="  (Double-click a value to edit)" Foreground="#D7BA7D" FontSize="11"
+                               Visibility="{Binding CanEdit, Converter={StaticResource BoolToVis}}"/>
+                </StackPanel>
+            </GroupBox.Header>
+
+            <DataGrid x:Name="TagsGrid" ItemsSource="{Binding MergedTags}" AutoGenerateColumns="False"
+                      IsReadOnly="{Binding IsReadOnly}"
+                      Background="#1E1E1E" Foreground="#E0E0E0" RowBackground="#252526" AlternatingRowBackground="#2A2A2D"
+                      GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#333337" HeadersVisibility="Column"
+                      BorderThickness="0" CanUserResizeRows="False">
+                <DataGrid.ColumnHeaderStyle>
+                    <Style TargetType="DataGridColumnHeader">
+                        <Setter Property="Background" Value="#2D2D30"/>
+                        <Setter Property="Foreground" Value="#CCCCCC"/>
+                        <Setter Property="Padding" Value="8,6"/>
+                        <Setter Property="FontWeight" Value="SemiBold"/>
+                    </Style>
+                </DataGrid.ColumnHeaderStyle>
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Tag Key" Binding="{Binding Key}" IsReadOnly="True" Width="190" FontWeight="SemiBold" Foreground="#9CDCFE"/>
+
+                    <DataGridTemplateColumn Header="Source" IsReadOnly="True" Width="175">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Border Background="#333337" CornerRadius="3" Padding="6,2" Margin="4,2" HorizontalAlignment="Left">
+                                    <TextBlock Text="{Binding OwnerBadge}" FontSize="10" FontFamily="Consolas" Foreground="#DCDCAA"/>
+                                </Border>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <DataGridTemplateColumn Header="Parsed Value" Width="*">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <StackPanel Margin="4,4" ToolTip="{Binding RawValue}">
+                                    <TextBlock Text="{Binding CleanValue}" FontFamily="Consolas" TextWrapping="Wrap"/>
+
+                                    <ItemsControl ItemsSource="{Binding Badges}" Margin="0,6,0,0">
+                                        <ItemsControl.Style>
+                                            <Style TargetType="ItemsControl">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding HasBadges}" Value="False">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </ItemsControl.Style>
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel Orientation="Horizontal"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Background="#2D4F3E" BorderBrush="#4EC9B0" BorderThickness="1" CornerRadius="12" Padding="10,3" Margin="0,0,6,4" ToolTip="{Binding HexValue}">
+                                                    <TextBlock Text="{Binding Name}" Foreground="#4EC9B0" FontFamily="Consolas" FontSize="11" FontWeight="SemiBold"/>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                        <DataGridTemplateColumn.CellEditingTemplate>
+                            <DataTemplate>
+                                <TextBox Text="{Binding CleanValue, UpdateSourceTrigger=PropertyChanged}" Background="#141414" Foreground="#FFFFFF" BorderBrush="#0E639C" FontFamily="Consolas" Padding="4" AcceptsReturn="True" TextWrapping="Wrap"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellEditingTemplate>
+
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+        </GroupBox>
+
+        <!-- SAVE BAR (ONLY VISIBLE IN STAGING / RECEIVER) -->
+        <Border Grid.Row="3" Background="#252526" BorderBrush="#3E3E42" BorderThickness="1"
+        CornerRadius="6" Padding="10" Margin="0,10,0,0"
+        Visibility="{Binding CanEdit, Converter={StaticResource BoolToVis}}">
+            <Grid>
+                <TextBlock Text="Edits save directly to the underlying Asset entries in memory."
+                   Foreground="#AAAAAA" VerticalAlignment="Center" FontSize="12"/>
+                <Button Content="💾 Save Changes" Click="SaveChanges_Click" Padding="14,6" HorizontalAlignment="Right"
+                Background="#0E639C" Foreground="White" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
+            </Grid>
+        </Border>
+
+        <!-- 4. COLLAPSIBLE RAW JSON -->
+        <Expander Grid.Row="4" Header="Raw JSON Payload" Foreground="#AAAAAA" Margin="0,10,0,0">
+            <TextBox Text="{Binding RawJson, Mode=OneWay}" IsReadOnly="True" Height="140"
+             Background="#141414" Foreground="#D4D4D4" FontFamily="Consolas" FontSize="11"
+             VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Padding="8"/>
+        </Expander>
     </Grid>
 </Window>

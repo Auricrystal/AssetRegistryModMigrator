@@ -1,40 +1,49 @@
 ﻿using AssetRegistryModMigrator.Classes;
+using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.IO;
+using System.Globalization;
+using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Documents;
-using System.Windows.Navigation;
-
-namespace AssetRegistryModMigrator.Model
+using System.Windows.Data;namespace AssetRegistryModMigrator.Model
 {
     public abstract class TreeNode : ObservableObject
     {
-        public TreeNode(string name)
-        {
-            _name = name;
-        }
-        public TreeNode(string name, TreeNode parent) : this(name)
-        {
-            _name = name;
-            ParentNode = parent;
-        }
-        protected TreeNode(Asset asset)
-        {
-            _name = asset.PackageName.Split("/", StringSplitOptions.RemoveEmptyEntries).Last();
-        }
-        public int Depth { get => ParentNode is not null ? ParentNode.Depth + 1 : 1; }
-        public int HashCode => GetHashCode();
         private string _name = "";
-        public string Name { get { return _name; } set { _name = value; OnPropertyChanged("Name"); } }
-        public string Path { get { return (ParentNode is not null) ? ParentNode?.ToString() + "/" + Name : "/" + Name; } }
-        public string FullPath { get => Path + "/" + Name; }
-        public TreeNode? ParentNode { get; set; }
-        public bool IsRoot { get => ParentNode is null; }
-        public bool IsLeaf => this is FileNode;
         private bool _isExpanded;
-        public bool IsExpanded
+        private bool? _selected = false;        // Optimizations: Pre-compute paths to eliminate runtime string cloning loops
+        private readonly string _cachedPath;
+        private readonly string _cachedFullPath;        public TreeNode(string name, string fullPath)
+        {
+            Name = name; // FIX: Use the public property setter to trigger layout bindings!
+            _cachedPath = fullPath;
+            _cachedFullPath = fullPath;
+        }        public TreeNode(string name, string fullPath, TreeNode parent)
+        {
+            Name = name; // FIX: Use the public property setter to trigger layout bindings!
+            ParentNode = parent;
+            _cachedPath = fullPath;
+            _cachedFullPath = fullPath;
+        }
+        protected TreeNode(Asset asset, string currentFolderFullPath)
+        {
+            string pkg = asset.PackageName;
+            int lastSlashIndex = pkg.LastIndexOf('/');
+            _name = lastSlashIndex >= 0 ? pkg.Substring(lastSlashIndex + 1) : pkg;            _cachedPath = currentFolderFullPath;
+            _cachedFullPath = $"{currentFolderFullPath}/{_name}";
+        }        public int Depth => ParentNode != null ? ParentNode.Depth + 1 : 1;
+        public int HashCode => GetHashCode();        public string Name
+        {
+            get => _name;
+            set { _name = value; OnPropertyChanged(nameof(Name)); }
+        }        public string Path => _cachedPath;
+        public string FullPath => _cachedFullPath;
+        public TreeNode? ParentNode { get; set; }
+        public bool IsRoot => ParentNode == null;
+        public bool IsLeaf => this is FileNode;        public bool IsExpanded
         {
             get => _isExpanded;
             set
@@ -42,105 +51,138 @@ namespace AssetRegistryModMigrator.Model
                 if (_isExpanded != value)
                 {
                     _isExpanded = value;
-                    OnPropertyChanged("IsExpanded");
+                    OnPropertyChanged();
                 }
             }
-        }
-
-        public bool? _selected = false;
-        public bool? Selected
+        }        public bool? Selected
         {
-            get { return _selected; }
+            get => _selected;
             set
             {
                 if (value != _selected)
                 {
                     _selected = value;
-                    OnPropertyChanged("Selected");
+                    OnPropertyChanged();
                 }
             }
         }
-        public TreeViewItem? OwningTreeViewItem {  get; set; }
-
-        public override string? ToString()
+        private bool _isVisible = true;
+        public bool IsVisible
         {
-            return (ParentNode is not null) ? ParentNode?.ToString() + "/" + Name : "/" + Name;
-        }
-
-        public virtual List<Asset> GetAllAssets() => [];
-
-        public bool TreeHasMatchingName(string search)
-        {
-            if (string.IsNullOrWhiteSpace(search)) return true;
-            if (IsLeaf) return FullPath.Contains(search, StringComparison.OrdinalIgnoreCase);
-
-            if (this is FolderNode folder)
-                foreach (var t in folder.Children)
-                    if (t.TreeHasMatchingName(search))
-                        return true;
-
-            return false;
-        }
-    }
-
-    public abstract class ObservableObject : INotifyPropertyChanged
-    {
-        #region INotifyPropertyChanged Members
-
-        /// <summary>
-        /// Raised when a property on this object has a new value.
-        /// </summary>
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        /// <summary>
-        /// Raises this object's PropertyChanged event.
-        /// </summary>
-        /// <param name="propertyName">The property that has a new value.</param>
-        protected virtual void OnPropertyChanged(string propertyName)
-        {
-            this.VerifyPropertyName(propertyName);
-
-            if (this.PropertyChanged != null)
+            get => _isVisible;
+            set
             {
-                var e = new PropertyChangedEventArgs(propertyName);
-                this.PropertyChanged(this, e);
+                if (_isVisible != value)
+                {
+                    _isVisible = value;
+                    OnPropertyChanged();
+                }
             }
         }
-
-        #endregion // INotifyPropertyChanged Members
-
-        #region Debugging Aides
-
         /// <summary>
-        /// Warns the developer if this object does not have
-        /// a public property with the specified name. This
-        /// method does not exist in a Release build.
+        /// High-performance recursive pass to update visibility states and expand matching folder branches.
         /// </summary>
-        [Conditional("DEBUG")]
-        [DebuggerStepThrough]
-        public virtual void VerifyPropertyName(string propertyName)
+        public bool ApplyDeepSearchFilter(string[] tokens)
         {
-            // Verify that the property name matches a real,
-            // public, instance property on this object.
+            // If search text field is completely empty, reset all items to visible and collapse them
+            if (tokens == null || tokens.Length == 0)
+            {
+                IsVisible = true;
+                IsExpanded = false;                if (this is FolderNode folder)
+                {
+                    var children = folder.Children;
+                    for (int i = 0; i < children.Count; i++)
+                    {
+                        children[i].ApplyDeepSearchFilter(tokens);
+                    }
+                }
+                return true;
+            }            if (IsLeaf)
+            {
+                // OPTIMIZATION: Replaced tokens.All() with raw indexing loop to bypass heap allocations
+                bool isMatch = true;
+                for (int i = 0; i < tokens.Length; i++)
+                {
+                    if (!_cachedFullPath.Contains(tokens[i], StringComparison.OrdinalIgnoreCase))
+                    {
+                        isMatch = false;
+                        break;
+                    }
+                }
+                IsVisible = isMatch;
+                return isMatch;
+            }            if (this is FolderNode folderNode)
+            {
+                bool anyChildVisible = false;
+                var children = folderNode.Children;                for (int i = 0; i < children.Count; i++)
+                {
+                    if (children[i].ApplyDeepSearchFilter(tokens))
+                    {
+                        anyChildVisible = true; break;
+                    }
+                }                // Folder is visible ONLY if it contains matching child nodes
+                IsVisible = anyChildVisible;                // Auto-expand the folder if it leads directly down to matching target nodes
+                IsExpanded = anyChildVisible;                return IsVisible;
+            }            return false;
+        }        public System.Windows.Controls.TreeViewItem? OwningTreeViewItem { get; set; }        public override string ToString() => _cachedPath;        public virtual List<Asset> GetAllAssets() => [];        public bool TreeHasMatchingName(string search)
+        {
+            if (string.IsNullOrWhiteSpace(search)) return true;            // Fast direct string context evaluation
+            if (IsLeaf) return _cachedFullPath.Contains(search, StringComparison.OrdinalIgnoreCase);            if (this is FolderNode folder)
+            {
+                // Accessing underlying fields directly removes property lookup overheads inside massive deep loop sweeps
+                var items = folder.Children;
+                for (int i = 0; i < items.Count; i++)
+                {
+                    if (items[i].TreeHasMatchingName(search)) return true;
+                }
+            }            return false;
+        }
+    }    public abstract class ObservableObject : INotifyPropertyChanged
+    {
+        public event PropertyChangedEventHandler? PropertyChanged;        /// <summary>
+        /// Modernized compiler-driven Property Change Handler
+        /// </summary>
+        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+        {
+            if (propertyName == null) return;            #if DEBUG
+            VerifyPropertyName(propertyName);
+            #endif            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }        [Conditional("DEBUG")]
+        private void VerifyPropertyName(string propertyName)
+        {
             if (TypeDescriptor.GetProperties(this)[propertyName] == null)
             {
-                string msg = "Invalid property name: " + propertyName;
-
-                if (this.ThrowOnInvalidPropertyName)
-                    throw new Exception(msg);
-                else
-                    Debug.Fail(msg);
+                throw new ArgumentException($"Invalid property structure contract: {propertyName}");
             }
         }
-
-        /// <summary>
-        /// Returns whether an exception is thrown, or if a Debug.Fail() is used
-        /// when an invalid property name is passed to the VerifyPropertyName method.
-        /// The default value is false, but subclasses used by unit tests might
-        /// override this property's getter to return true.
-        /// </summary>
-        protected virtual bool ThrowOnInvalidPropertyName { get; private set; }
-
-        #endregion // Debugging Aides
     }
-}
+
+    public class FolderIconConverter :IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value is int childCount)
+            {
+                // If it has children, it's a folder container.
+                // If it has 0 children, it's the penultimate selectable setting leaf.
+                return childCount > 0 ? "📁" : "⚙️";
+            }
+            return "📁";
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
+    public class TreeViewTemplateSelector :DataTemplateSelector
+    {
+        public DataTemplate? FolderTemplate { get; set; }
+        public DataTemplate? FileTemplate { get; set; }        public override DataTemplate? SelectTemplate(object item, DependencyObject container)
+        {
+            if (item is FolderNode)
+                return FolderTemplate;            if (item is FileNode)
+                return FileTemplate;            return base.SelectTemplate(item, container);
+        }
+    }
+}
